@@ -27,7 +27,6 @@ def merge_safetensors(file_path1, file_path2, p, lambda_val):
         for key in common_keys:
             tensor1 = f1.get_tensor(key)
             tensor2 = f2.get_tensor(key)
-            tensor1, tensor2 = resize_tensors(tensor1, tensor2)
             merged_tensors[key] = tensor1 + lambda_val * merge_tensors(tensor1, tensor2, p)
 
     return merged_tensors
