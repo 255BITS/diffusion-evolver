@@ -58,17 +58,67 @@ def evolve(population, population_size, num_parents, mutation_rate, children_cou
     log_candidates(population)
     return population
 
-async def evaluate(candidate, criteria):
-    print(f"Evaluating... {candidate.fitness}")
-    candidate.fitness = await criteria(candidate)
+
+async def correct_insert_element(item, sorted_list, compare):
+    if not sorted_list:
+        return [item]
+    # Find a place for insertion
+    insert_pos = await find_insertion_point(item, sorted_list, compare)
+    # Insert item tentatively
+    sorted_list.insert(insert_pos, item)
+    return sorted_list
+
+async def find_insertion_point(item, sorted_list, compare):
+    # Binary search variant that accounts for potential comparison errors
+    low, high = 0, len(sorted_list) - 1
+    while low <= high:
+        mid = (low + high) // 2
+        result = await compare(item, sorted_list[mid])
+        # Adjust binary search based on comparison, considering potential inaccuracies
+        if result == 1:
+            high = mid - 1
+        else:
+            low = mid + 1
+    return low
+
+async def sort_with_correction(buffer, compare):
+    sorted_list = []
+    for item in buffer:
+        sorted_list = await correct_insert_element(item, sorted_list, compare)
+    # Correction mechanism here
+    sorted_list = await correction_pass(sorted_list)
+    return sorted_list
+
+async def correction_pass(sorted_list):
+    # Implement a correction pass, potentially re-comparing elements
+    # This could involve heuristic-based swaps or reinsertions
+    return sorted_list
+
+def choose_first_occurrence(s, opta, optb):
+    # Find the index of A and B
+    index_a = s.find(opta)
+    index_b = s.find(optb)
+    # Check if both A and B are found
+    if index_a != -1 and index_b != -1:
+        # Return the one that occurs first
+        if index_a < index_b:
+            return opta
+        else:
+            return optb
+    elif index_a != -1:
+        # Only A is found
+        return opta
+    elif index_b != -1:
+        # Only B is found
+        return optb
+    else:
+        # Neither A nor B is found
+        return None
 
 async def run_evolution(population, elite_size, num_parents, population_size, mutation_rate, evaluation_criteria):
     population = evolve(population, population_size, num_parents, mutation_rate)
 
-    for candidate in population:
-        await evaluate(candidate, evaluation_criteria)
-
-    population.sort(key=lambda c: c.fitness, reverse=True)
+    population = await sort_with_correction(population, evaluation_criteria)
     for tokill in population[elite_size:]:
         if not tokill.initial_population:
             os.remove(tokill.file_path)
