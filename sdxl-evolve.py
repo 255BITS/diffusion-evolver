@@ -11,6 +11,7 @@ from diffusers import StableDiffusionXLPipeline
 from diffusers import EulerDiscreteScheduler
 from huggingface_hub import hf_hub_download
 from io import BytesIO
+from tqdm.asyncio import tqdm
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Evolutionary merge")
@@ -24,7 +25,7 @@ def parse_arguments():
     parser.add_argument('-output_path', dest='output_path', type=str, default="evolve_output", help='Directory to save results')
     parser.add_argument('-criteria', dest='criteria', type=str, default='Which image has the highest quality?', help='Prompt for vlm evaluation')
     parser.add_argument('-eval_file', dest='eval_file', type=str, default='evals.txt', help='A txt file containing a newline delimited list of prompts to evaluation against')
-    parser.add_argument('-eval_samples', dest='eval_samples', type=int, default=4, help='The number of samples to evaluate between candidates')
+    parser.add_argument('-eval_samples', dest='eval_samples', type=int, default=3, help='The number of samples to evaluate between candidates')
     return parser.parse_args()
 
 def generate_images(file_path, evals):
@@ -151,14 +152,18 @@ This is automated so simply output 1 or 2.
         return int(text)
     else:
         print("wtf  bad output", text)
-        return 1
+        raise "error"
+        #return 1
 
+global_comparisons = 0
 async def compare(a: evolve.Candidate, b:evolve.Candidate):
-    set_evals(load_random_evals(args.eval_file, args.eval_samples))
+    global global_comparisons
     b64_images_a = generate_b64_images(a.file_path, get_evals())
     b64_images_b = generate_b64_images(b.file_path, get_evals())
     prompts = [evl["prompt"] for evl in get_evals()]
     judgement = vlm_judge(prompts, b64_images_a, b64_images_b)
+    global_comparisons += 1
+    print("Number of comparisons", global_comparisons)
 
     if judgement == 1:
         return 1
@@ -172,7 +177,8 @@ async def main():
     os.makedirs(args.output_path, exist_ok=True)
     population = evolve.load_candidates(args.model_list)
     print("Beginning evolution")
-    for i in range(args.cycles):
+    async for i in tqdm(range(args.cycles), desc='Evolving'):
+        set_evals(load_random_evals(args.eval_file, args.eval_samples))
         population = await evolve.run_evolution(population, args.elite, args.parents, args.population, args.mutation, compare)
 
     print("Resulting population:")
