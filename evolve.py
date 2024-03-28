@@ -1,4 +1,5 @@
 import merge
+import logging
 import os
 import random
 import uuid
@@ -37,7 +38,7 @@ def mutation(offspring, threshold=0.05):
         offspring.lambda_val = random_lambda()
 
 def breed(parents, mutation_rate, output_path):
-    print("Crossover and mutation...")
+    logging.info("Crossover and mutation...")
     file_path = str(Path(output_path) / (str(uuid.uuid4())+".safetensors"))
     offspring = Candidate(file_path, parents[0].p, parents[0].lambda_val)
     mutation(offspring, mutation_rate)
@@ -46,7 +47,7 @@ def breed(parents, mutation_rate, output_path):
     for parent in parents[2:]:
         tensor_map = merge.merge_safetensors(offspring.file_path, parent.file_path, offspring.p, offspring.lambda_val)
 
-    print(f"Saving to {offspring.file_path}, from {','.join([p.file_path for p in parents])} p={offspring.p} λ={offspring.lambda_val}")
+    logging.info(f"Saving to {offspring.file_path}, from {','.join([p.file_path for p in parents])} p={offspring.p} λ={offspring.lambda_val}")
     save_file(tensor_map, offspring.file_path)
     del tensor_map
     return offspring
@@ -118,14 +119,14 @@ def choose_first_occurrence(s, opta, optb):
         return none
 
 async def run_evolution(population, elite_size, num_parents, population_size, mutation_rate, output_path, evaluation_criteria):
-    print("Before evolve")
+    logging.info("Before evolve")
     log_candidates(population)
     population = evolve(population, population_size, num_parents, mutation_rate, output_path)
 
-    print("Before sorting")
+    logging.info("Before sorting")
     log_candidates(population)
     population = await sort_with_correction(population, evaluation_criteria)
-    print("After sorting")
+    logging.info("After sorting")
     log_candidates(population)
     for tokill in population[elite_size:]:
         if not tokill.initial_population:
@@ -135,7 +136,7 @@ async def run_evolution(population, elite_size, num_parents, population_size, mu
 def log_candidates(population):
     format_str = "{{0}}. {{1:<24}} - {{2}}".format()
     for index, candidate in enumerate(population, start=1):
-        print(format_str.format(index, candidate.file_path, candidate.fitness))
+        logging.info(format_str.format(index, candidate.file_path, candidate.fitness))
 
 def load_candidates(file_path):
     candidates = []
