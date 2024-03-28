@@ -35,9 +35,9 @@ def parse_arguments():
     return parser.parse_args()
 
 global_cache = {}
+global_device = None
 def generate_images(file_path, evals):
     global global_cache
-    global global_device
     if file_path in global_cache:
         return global_cache[file_path]
     images = []
