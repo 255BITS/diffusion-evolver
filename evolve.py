@@ -15,7 +15,7 @@ class Candidate:
         self.lambda_val = lambda_val
         self.fitness = None
 
-    def to_dict():
+    def to_dict(self):
         return {
             "model": self.file_path,
             "p": self.p,
