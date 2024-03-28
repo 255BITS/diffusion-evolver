@@ -45,7 +45,7 @@ def mutation(offspring, threshold=0.05):
         offspring.p = random_p()
         offspring.lambda_val = random_lambda()
 
-def evolve(population, population_size, num_parents, mutation_rate, children_count=2, output_folder="evolve_output"):
+def evolve(population, population_size, num_parents, mutation_rate, children_count=1, output_folder="evolve_output"):
     seed_population = list(population)
     log_candidates(population)
     while len(population) < population_size:

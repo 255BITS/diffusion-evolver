@@ -28,26 +28,34 @@ def parse_arguments():
     parser.add_argument('-eval_samples', dest='eval_samples', type=int, default=3, help='The number of samples to evaluate between candidates')
     return parser.parse_args()
 
+global_cache = {}
 def generate_images(file_path, evals):
+    global global_cache
+    if file_path in global_cache:
+        return global_cache[file_path]
     images = []
     print(f"Loading {file_path}")
     pipe = StableDiffusionXLPipeline.from_single_file(file_path, torch_dtype=torch.float16, variant="fp16", use_safetensors=True, local_files_only=True).to("cuda")
     pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config, timestep_spacing="trailing")
-    pipe.load_lora_weights(
-        hf_hub_download(
-            repo_id="jiaxiangc/res-adapter",
-            subfolder="sdxl-i",
-            filename="resolution_lora.safetensors",
-        ),
-        adapter_name="res_adapter",
-    )
-    pipe.set_adapters(["res_adapter"], adapter_weights=[1.0])
+    #pipe.load_lora_weights(
+    #    hf_hub_download(
+    #        repo_id="jiaxiangc/res-adapter",
+    #        subfolder="sdxl-i",
+    #        filename="resolution_lora.safetensors",
+    #    ),
+    #    adapter_name="res_adapter",
+    #)
+    #pipe.set_adapters(["res_adapter"], adapter_weights=[1.0])
 
     for i, evl in enumerate(evals):
-        image = pipe(evl['prompt'], num_inference_steps=8, width=512, height=512, guidance_scale=1, generator=torch.manual_seed(evl['seed'])).images[0]
+        #image = pipe(evl['prompt'], num_inference_steps=8, width=512, height=512, guidance_scale=1, generator=torch.manual_seed(evl['seed'])).images[0]
+        image = pipe(evl['prompt'], num_inference_steps=8, guidance_scale=1, generator=torch.manual_seed(evl['seed'])).images[0]
+        image.resize((512, 512))
+        image.save(f"output-evolve-{i}-{file_path.split('/')[-1]}.png")
         images.append(image)
 
     del pipe
+    global_cache[file_path] = images
     return images
 
 def generate_b64_images(*args):
@@ -84,7 +92,9 @@ def get_evals():
 
 def set_evals(evals):
     global global_evals
+    global global_cache
     global_evals = evals
+    global_cache = {}
 
 def vlm_judge(prompts, b64_images_a, b64_images_b):
     client = anthropic.Anthropic()
