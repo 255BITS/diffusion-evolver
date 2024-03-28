@@ -206,7 +206,7 @@ async def compare(a: evolve.Candidate, b:evolve.Candidate):
         global_yays += 1
     else:
         global_nays += 1
-    logging.info("Number of comparisons Total: {global_comparisons} Yay: {global_yays} Nay: {global_nays}")
+    logging.info(f"Number of comparisons Total: {global_comparisons} Yay: {global_yays} Nay: {global_nays}")
 
     if judgement == 1:
         return 1
