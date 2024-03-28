@@ -23,7 +23,7 @@ class Candidate:
         }
 
 def random_p():
-    return random.random() / 1.5
+    return (random.random() / 2.0)+0.1
 
 def random_lambda():
     return (random.random() + 1)/2*4
@@ -31,36 +31,35 @@ def random_lambda():
 def selection(population, num_parents):
     return random.sample(population, num_parents)
 
-def crossover(parents, output_path):
-    print("Crossover(DARE merge)...")
-    file_path = str(Path(output_path) / (str(uuid.uuid4())+".safetensors"))
-    offspring = Candidate(file_path, parents[0].p, parents[0].lambda_val)
-    tensor_map = merge.merge_safetensors(parents[0].file_path, parents[1].file_path, parents[1].p, parents[1].lambda_val)
-
-    for parent in parents[2:]:
-        tensor_map = merge.merge_safetensors(offspring.file_path, parent.file_path, parent.p, parent.lambda_val)
-
-    print(f"Saving to {offspring.file_path}, from {','.join([p.file_path for p in parents])}")
-    save_file(tensor_map, offspring.file_path)
-    del tensor_map
-    return offspring
-
 def mutation(offspring, threshold=0.05):
     if random.random() <= threshold:
         offspring.p = random_p()
         offspring.lambda_val = random_lambda()
+
+def breed(parents, mutation_rate, output_path):
+    print("Crossover and mutation...")
+    file_path = str(Path(output_path) / (str(uuid.uuid4())+".safetensors"))
+    offspring = Candidate(file_path, parents[0].p, parents[0].lambda_val)
+    mutation(offspring, mutation_rate)
+    tensor_map = merge.merge_safetensors(parents[0].file_path, parents[1].file_path, offspring.p, offspring.lambda_val)
+
+    for parent in parents[2:]:
+        tensor_map = merge.merge_safetensors(offspring.file_path, parent.file_path, offspring.p, offspring.lambda_val)
+
+    print(f"Saving to {offspring.file_path}, from {','.join([p.file_path for p in parents])} p={offspring.p} λ={offspring.lambda_val}")
+    save_file(tensor_map, offspring.file_path)
+    del tensor_map
+    return offspring
 
 def evolve(population, population_size, num_parents, mutation_rate, output_path, children_count=1):
     seed_population = list(population)
     while len(population) < population_size:
         parents = selection(seed_population, num_parents)
         for i in range(min(children_count, population_size - len(population))):
-            offspring = crossover(parents, output_path)
-            mutation(offspring, mutation_rate)
+            offspring = breed(parents, mutation_rate, output_path)
             population.append(offspring)
 
     return population
-
 
 async def correct_insert_element(item, sorted_list, compare):
     if not sorted_list:
