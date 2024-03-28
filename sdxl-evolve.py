@@ -4,6 +4,7 @@ import asyncio
 import base64
 import evolve
 import logging
+import time
 import os
 import random
 import torch
@@ -30,16 +31,18 @@ def parse_arguments():
     parser.add_argument('-criteria', dest='criteria', type=str, default='Which image has the highest quality?', help='Prompt for vlm evaluation')
     parser.add_argument('-eval_file', dest='eval_file', type=str, default='evals.txt', help='A txt file containing a newline delimited list of prompts to evaluation against')
     parser.add_argument('-eval_samples', dest='eval_samples', type=int, default=3, help='The number of samples to evaluate between candidates')
+    parser.add_argument('-device', dest='device', type=str, default="cuda:0", help='The device to run on')
     return parser.parse_args()
 
 global_cache = {}
 def generate_images(file_path, evals):
     global global_cache
+    global global_device
     if file_path in global_cache:
         return global_cache[file_path]
     images = []
     logging.info(f"Loading {file_path}")
-    pipe = StableDiffusionXLPipeline.from_single_file(file_path, torch_dtype=torch.float16, variant="fp16", use_safetensors=True).to("cuda")
+    pipe = StableDiffusionXLPipeline.from_single_file(file_path, torch_dtype=torch.float16, variant="fp16", use_safetensors=True).to(global_device)
     pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config, timestep_spacing="trailing")
     #pipe.load_lora_weights(
     #    hf_hub_download(
@@ -213,10 +216,12 @@ async def compare(a: evolve.Candidate, b:evolve.Candidate):
     return -1
 
 async def main():
+    global global_device
     # Parse command-line arguments
     args = parse_arguments()
     if args.seed is not None:
         torch.manual_seed(args.seed)
+    global_device = args.device
     os.makedirs(args.output_path, exist_ok=True)
     population = evolve.load_candidates(args.model_list)
     evolve.write_yaml(population, Path(args.output_path) / "initial.yaml")
