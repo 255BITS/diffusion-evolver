@@ -44,21 +44,10 @@ def generate_images(file_path, evals):
     logging.info(f"Loading {file_path}")
     pipe = StableDiffusionXLPipeline.from_single_file(file_path, torch_dtype=torch.float16, variant="fp16", use_safetensors=True).to(global_device)
     pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config, timestep_spacing="trailing")
-    #pipe.load_lora_weights(
-    #    hf_hub_download(
-    #        repo_id="jiaxiangc/res-adapter",
-    #        subfolder="sdxl-i",
-    #        filename="resolution_lora.safetensors",
-    #    ),
-    #    adapter_name="res_adapter",
-    #)
-    #pipe.set_adapters(["res_adapter"], adapter_weights=[1.0])
 
     for i, evl in enumerate(evals):
-        #image = pipe(evl['prompt'], num_inference_steps=8, width=512, height=512, guidance_scale=1, generator=torch.manual_seed(evl['seed'])).images[0]
         image = pipe(evl['prompt'], num_inference_steps=8, guidance_scale=1, generator=torch.manual_seed(evl['seed'])).images[0]
         image = image.resize((512, 512))
-        image.save(f"output-evolve-{i}-{file_path.split('/')[-1]}.png")
         images.append(image)
 
     del pipe
