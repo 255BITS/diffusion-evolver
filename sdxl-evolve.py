@@ -224,7 +224,7 @@ async def main():
     async for i in tqdm(range(args.cycles), desc='Evolving'):
         set_evals(load_random_evals(args.eval_file, args.eval_samples))
         population = await evolve.run_evolution(population, args.elite, args.parents, args.population, args.mutation, args.output_path, compare)
-        evolve.write_yaml(population, Path(args.output_path) / "step-{i}.yaml")
+        evolve.write_yaml(population, Path(args.output_path) / f"step-{i}.yaml")
 
     logging.info("Resulting population:")
     evolve.log_candidates(population)
