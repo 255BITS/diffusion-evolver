@@ -39,7 +39,7 @@ def generate_images(file_path, evals):
         return global_cache[file_path]
     images = []
     logging.info(f"Loading {file_path}")
-    pipe = StableDiffusionXLPipeline.from_single_file(file_path, torch_dtype=torch.float16, variant="fp16", use_safetensors=True, local_files_only=True).to("cuda")
+    pipe = StableDiffusionXLPipeline.from_single_file(file_path, torch_dtype=torch.float16, variant="fp16", use_safetensors=True).to("cuda")
     pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config, timestep_spacing="trailing")
     #pipe.load_lora_weights(
     #    hf_hub_download(
