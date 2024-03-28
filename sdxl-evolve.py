@@ -10,6 +10,7 @@ import torch
 from diffusers import StableDiffusionXLPipeline
 from diffusers import EulerDiscreteScheduler
 from huggingface_hub import hf_hub_download
+from pathlib import Path
 from io import BytesIO
 from tqdm.asyncio import tqdm
 
@@ -50,7 +51,7 @@ def generate_images(file_path, evals):
     for i, evl in enumerate(evals):
         #image = pipe(evl['prompt'], num_inference_steps=8, width=512, height=512, guidance_scale=1, generator=torch.manual_seed(evl['seed'])).images[0]
         image = pipe(evl['prompt'], num_inference_steps=8, guidance_scale=1, generator=torch.manual_seed(evl['seed'])).images[0]
-        image.resize((512, 512))
+        image = image.resize((512, 512))
         image.save(f"output-evolve-{i}-{file_path.split('/')[-1]}.png")
         images.append(image)
 
@@ -110,7 +111,7 @@ Candidate 1 generations:
 """.strip()
     end_text = """
 Which candidate generated more engaging images? If candidate 1 did better, simply output '1'. If candidate 2 did better, output '2'.
-This is automated so simply output 1 or 2.
+This is automated so simply output 1 or 2 based on comparing the images you've seen.
 """.strip()
     messages = [
             {
@@ -166,17 +167,27 @@ This is automated so simply output 1 or 2.
         #return 1
 
 global_comparisons = 0
+global_yays = 0
+global_nays = 0
+
 async def compare(a: evolve.Candidate, b:evolve.Candidate):
-    global global_comparisons
+    global global_comparisons, global_yays, global_nays
+    reverse = random.random() > 0.5
     b64_images_a = generate_b64_images(a.file_path, get_evals())
     b64_images_b = generate_b64_images(b.file_path, get_evals())
     prompts = [evl["prompt"] for evl in get_evals()]
-    judgement = vlm_judge(prompts, b64_images_a, b64_images_b)
+    if reverse:
+        judgement = vlm_judge(prompts, b64_images_b, b64_images_a)
+        judgement = (1 if judgement == 2 else 1)
+    else:
+        judgement = vlm_judge(prompts, b64_images_a, b64_images_b)
+    print("Number of comparisons", global_comparisons, global_yays, global_nays)
     global_comparisons += 1
-    print("Number of comparisons", global_comparisons)
 
     if judgement == 1:
+        global_yays += 1
         return 1
+    global_nays += 1
     return -1
 
 async def main():
@@ -189,7 +200,8 @@ async def main():
     print("Beginning evolution")
     async for i in tqdm(range(args.cycles), desc='Evolving'):
         set_evals(load_random_evals(args.eval_file, args.eval_samples))
-        population = await evolve.run_evolution(population, args.elite, args.parents, args.population, args.mutation, compare)
+        population = await evolve.run_evolution(population, args.elite, args.parents, args.population, args.mutation, args.output_path, compare)
+        write_yaml(population, Path(args.output_path) / "step-{i}.yaml")
 
     print("Resulting population:")
     evolve.log_candidates(population)
