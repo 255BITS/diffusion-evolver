@@ -48,6 +48,7 @@ def generate_images(file_path, evals):
     for i, evl in enumerate(evals):
         image = pipe(evl['prompt'], num_inference_steps=8, guidance_scale=1, generator=torch.manual_seed(evl['seed'])).images[0]
         image = image.resize((512, 512))
+        image.save(f"output-evolve-{file_path.split('/')[-1]}-{i}.png")
         images.append(image)
 
     del pipe
