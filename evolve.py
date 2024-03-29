@@ -150,7 +150,7 @@ def load_candidates(file_path):
     return candidates
 
 def write_yaml(population, path):
-    yaml_str = yaml.dump([c.to_dict() for c in population], sort_keys=False)
+    yaml_str = yaml.dump({"models": [c.to_dict() for c in population]}, sort_keys=False)
 
     # Write the YAML string to a file
     with open(path, "w") as file:
