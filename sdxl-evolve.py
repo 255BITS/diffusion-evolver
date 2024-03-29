@@ -190,7 +190,7 @@ async def compare(a: evolve.Candidate, b:evolve.Candidate):
     prompts = [evl["prompt"] for evl in get_evals()]
     if reverse:
         judgement = vlm_judge_with_retry(prompts, b64_images_b, b64_images_a)
-        judgement = (1 if judgement == 2 else 1)
+        judgement = (1 if judgement == 2 else 2)
     else:
         judgement = vlm_judge_with_retry(prompts, b64_images_a, b64_images_b)
     global_comparisons += 1
