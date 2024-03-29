@@ -27,7 +27,7 @@ def random_p():
     return (random.random() / 2.0)+0.1
 
 def random_lambda():
-    return (random.random() + 1)/2*4
+    return random.random()*2.5+0.5
 
 def selection(population, num_parents):
     return random.sample(population, num_parents)
