@@ -37,7 +37,6 @@ Available options:
 - `-population`: Size of the population (default: 50).
 - `-mutation`: Chance of mutation (default: 0.05).
 - `-output_path`: Directory to save the results (default: "evolve_output").
-- `-criteria`: Prompt for VLM evaluation (default: "Which image has the highest quality?").
 - `-eval_file`: Text file containing prompts for evaluation (default: "evals.txt").
 - `-eval_samples`: Number of samples to evaluate between candidates (default: 3).
 

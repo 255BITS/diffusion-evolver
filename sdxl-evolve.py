@@ -28,7 +28,6 @@ def parse_arguments():
     parser.add_argument('-population', dest='population', type=int, default=50, help='Size of population')
     parser.add_argument('-mutation', dest='mutation', type=float, default=0.05, help='Chance of mutation')
     parser.add_argument('-output_path', dest='output_path', type=str, default="evolve_output", help='Directory to save results')
-    parser.add_argument('-criteria', dest='criteria', type=str, default='Which image has the highest quality?', help='Prompt for vlm evaluation')
     parser.add_argument('-eval_file', dest='eval_file', type=str, default='evals.txt', help='A txt file containing a newline delimited list of prompts to evaluation against')
     parser.add_argument('-eval_samples', dest='eval_samples', type=int, default=3, help='The number of samples to evaluate between candidates')
     parser.add_argument('-device', dest='device', type=str, default="cuda:0", help='The device to run on')
