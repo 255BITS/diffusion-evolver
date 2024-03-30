@@ -32,6 +32,7 @@ def parse_arguments():
     parser.add_argument('-eval_file', dest='eval_file', type=str, default='evals.txt', help='A txt file containing a newline delimited list of prompts to evaluation against')
     parser.add_argument('-eval_samples', dest='eval_samples', type=int, default=3, help='The number of samples to evaluate between candidates')
     parser.add_argument('-device', dest='device', type=str, default="cuda:0", help='The device to run on')
+    parser.add_argument('-reintroduction_threshold', dest='device', type=float, default=0.125, help='The chance to reintroduce an initial model back into the elite population. Can help with solution diversity.')
     return parser.parse_args()
 
 global_cache = {}
@@ -214,13 +215,16 @@ async def main():
     global_device = args.device
     global_prompt = args.prompt
     os.makedirs(args.output_path, exist_ok=True)
-    population = evolve.load_candidates(args.model_list)
+    initial_population = evolve.load_candidates(args.model_list)
+    population = list(initial_population)
     evolve.write_yaml(population, Path(args.output_path) / "initial.yaml")
     logging.info("Beginning evolution")
     async for i in tqdm(range(args.cycles), desc='Evolving'):
         set_evals(load_random_evals(args.eval_file, args.eval_samples))
         population = await evolve.run_evolution(population, args.elite, args.parents, args.population, args.mutation, args.output_path, compare)
         evolve.write_yaml(population, Path(args.output_path) / f"step-{i}.yaml")
+        if random.random() < args.reintroduction_threshold:
+            population.append(random.choice(initial_population))
 
     logging.info("Resulting population:")
     evolve.log_candidates(population)
