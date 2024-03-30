@@ -77,7 +77,7 @@ def breed(parents, mutation_rate, output_path):
         tensor_map = merge.merge_safetensors(offspring.file_path, parent.file_path, offspring.p, offspring.lambda_val)
 
     offspring.generation = max([parent.generation for parent in parents]) + 1
-    offspring.location = torch.mean(torch.stack([parent.location for parent in parents]))
+    offspring.location = torch.mean(torch.stack([parent.location for parent in parents]), dim=1)
 
     logging.info(f"Saving to {offspring.file_path}, from {','.join([p.file_path for p in parents])} p={offspring.p} λ={offspring.lambda_val} gen={offspring.generation}")
     save_file(tensor_map, offspring.file_path)
