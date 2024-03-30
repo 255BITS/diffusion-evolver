@@ -9,18 +9,20 @@ from safetensors.torch import save_file
 from pathlib import Path
 
 class Candidate:
-    def __init__(self, file_path, p, lambda_val, initial_population=False):
+    def __init__(self, file_path, p, lambda_val, initial_population=False, generation=0):
         self.file_path = file_path
         self.initial_population = initial_population
         self.p = p
         self.lambda_val = lambda_val
         self.fitness = None
+        self.generation = generation
 
     def to_dict(self):
         return {
             "model": self.file_path,
             "p": self.p,
-            "lambda": self.lambda_val
+            "lambda": self.lambda_val,
+            "generation": self.generation
         }
 
 def random_p():
@@ -47,7 +49,9 @@ def breed(parents, mutation_rate, output_path):
     for parent in parents[2:]:
         tensor_map = merge.merge_safetensors(offspring.file_path, parent.file_path, offspring.p, offspring.lambda_val)
 
-    logging.info(f"Saving to {offspring.file_path}, from {','.join([p.file_path for p in parents])} p={offspring.p} λ={offspring.lambda_val}")
+    offspring.generation = max([parent.generation for parent in parents]) + 1
+
+    logging.info(f"Saving to {offspring.file_path}, from {','.join([p.file_path for p in parents])} p={offspring.p} λ={offspring.lambda_val} gen={offspring.generation}")
     save_file(tensor_map, offspring.file_path)
     del tensor_map
     return offspring
@@ -145,7 +149,8 @@ def load_candidates(file_path):
     for candidate_data in data["models"]:
         p = candidate_data.get('p', random_p())
         lambda_val = candidate_data.get("lambda", random_lambda())
-        candidate = Candidate(candidate_data['model'], p=p, lambda_val=lambda_val, initial_population=True)
+        generation = candidate_data.get("generation", 0)
+        candidate = Candidate(candidate_data['model'], p=p, lambda_val=lambda_val, initial_population=True, generation=generation)
         candidates.append(candidate)
     return candidates
 
