@@ -147,7 +147,6 @@ This is automated so simply output 1 or 2 based on comparing the images you've s
                 ],
             }
         ]
-    print(messages)
 
     model = "claude-3-haiku-20240307"
     message = client.messages.create(
