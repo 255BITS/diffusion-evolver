@@ -107,8 +107,8 @@ Each candidate will be given these prompts to generate images. First you will re
 Candidate 1 generations:
 """.strip()
     end_text = """
-{global_prompt} If candidate 1 did better, simply output '1'. If candidate 2 did better, output '2'. If any of the candidates images are broken then disqualify it.
-This is automated so simply output 1 or 2 based on comparing the images you've seen.
+{global_prompt}
+If candidate 1 did better, simply output '1'. If candidate 2 did better, output '2'. If any of the candidates images are broken then disqualify it. This is automated, the first 1 or 2 you output will be the winner.
 """.strip()
     messages = [
             {
@@ -152,16 +152,15 @@ This is automated so simply output 1 or 2 based on comparing the images you've s
     message = client.messages.create(
         model=model,
         max_tokens=128,
-        system="You are a critical AI judge for text-to-image diffusion models. You will be presented images from both models with the same prompt and seed. At the end you will give your judgement. You love high quality generations, prompt adherence, and creativity.",
+        system="You are diffusion evolver AI, a judge for text-to-image diffusion models. You will be presented images from both models with the same prompt and seed. At the end you will give your judgement. You love high quality generations, prompt adherence, and creativity.",
         messages=messages,
     )
     text = message.content[0].text
-    if text[0] == "1" or text[0] == "2":
-        return int(text)
-    else:
-        logging.info("wtf  bad output", text)
-        raise "error"
-        #return 1
+    for i, ch in enumerate(text):
+        if ch == "1" or ch == "2":
+            return int(ch)
+    logging.info("wtf  bad output", text)
+    raise "error"
 
 def vlm_judge_with_retry(*args, max_retries=3, initial_wait=1, max_wait=10):
     for attempt in range(max_retries):
