@@ -32,7 +32,7 @@ def parse_arguments():
     parser.add_argument('-eval_file', dest='eval_file', type=str, default='evals.txt', help='A txt file containing a newline delimited list of prompts to evaluation against')
     parser.add_argument('-eval_samples', dest='eval_samples', type=int, default=3, help='The number of samples to evaluate between candidates')
     parser.add_argument('-device', dest='device', type=str, default="cuda:0", help='The device to run on')
-    parser.add_argument('-reintroduction_threshold', dest='device', type=float, default=0.125, help='The chance to reintroduce an initial model back into the elite population. Can help with solution diversity.')
+    parser.add_argument('-reintroduction_threshold', dest='reintroduction_threshold', type=float, default=0.125, help='The chance to reintroduce an initial model back into the elite population. Can help with solution diversity.')
     return parser.parse_args()
 
 global_cache = {}
