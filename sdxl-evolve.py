@@ -28,6 +28,7 @@ def parse_arguments():
     parser.add_argument('-population', dest='population', type=int, default=50, help='Size of population')
     parser.add_argument('-mutation', dest='mutation', type=float, default=0.05, help='Chance of mutation')
     parser.add_argument('-output_path', dest='output_path', type=str, default="evolve_output", help='Directory to save results')
+    parser.add_argument('-prompt', dest='prompt', type=str, default='Which candidate generated more engaging images?', help='A prompt to inject into the decision making for claude. A question about which candidate did better.')
     parser.add_argument('-eval_file', dest='eval_file', type=str, default='evals.txt', help='A txt file containing a newline delimited list of prompts to evaluation against')
     parser.add_argument('-eval_samples', dest='eval_samples', type=int, default=3, help='The number of samples to evaluate between candidates')
     parser.add_argument('-device', dest='device', type=str, default="cuda:0", help='The device to run on')
@@ -35,6 +36,7 @@ def parse_arguments():
 
 global_cache = {}
 global_device = None
+global_prompt = None
 def generate_images(file_path, evals):
     global global_cache
     if file_path in global_cache:
@@ -105,7 +107,7 @@ Each candidate will be given these prompts to generate images. First you will re
 Candidate 1 generations:
 """.strip()
     end_text = """
-Which candidate generated more engaging images? If candidate 1 did better, simply output '1'. If candidate 2 did better, output '2'.
+{global_prompt} If candidate 1 did better, simply output '1'. If candidate 2 did better, output '2'. If any of the candidates images are broken then disqualify it.
 This is automated so simply output 1 or 2 based on comparing the images you've seen.
 """.strip()
     messages = [
@@ -145,12 +147,13 @@ This is automated so simply output 1 or 2 based on comparing the images you've s
                 ],
             }
         ]
+    print(messages)
 
     model = "claude-3-haiku-20240307"
     message = client.messages.create(
         model=model,
         max_tokens=128,
-        system="You are a critical AI judge for text-to-image diffusion models. You will be presented images from both models with the same prompt and seed. At the end you will give your finest judgement. You love high quality generations.",
+        system="You are a critical AI judge for text-to-image diffusion models. You will be presented images from both models with the same prompt and seed. At the end you will give your judgement. You love high quality generations, prompt adherence, and creativity.",
         messages=messages,
     )
     text = message.content[0].text
@@ -205,12 +208,13 @@ async def compare(a: evolve.Candidate, b:evolve.Candidate):
     return -1
 
 async def main():
-    global global_device
+    global global_device, global_prompt
     # Parse command-line arguments
     args = parse_arguments()
     if args.seed is not None:
         torch.manual_seed(args.seed)
     global_device = args.device
+    global_prompt = args.prompt
     os.makedirs(args.output_path, exist_ok=True)
     population = evolve.load_candidates(args.model_list)
     evolve.write_yaml(population, Path(args.output_path) / "initial.yaml")
