@@ -94,19 +94,21 @@ def evolve(population, population_size, num_parents, mutation_rate, output_path,
 
     return population
 
-async def correct_insert_element(item, sorted_list, compare):
+async def correct_insert_element(item, sorted_list, compare, top_k):
     if not sorted_list:
         return [item]
     # find a place for insertion
-    insert_pos = await find_insertion_point(item, sorted_list, compare)
+    insert_pos = await find_insertion_point(item, sorted_list, compare, top_k)
     # insert item tentatively
     sorted_list.insert(insert_pos, item)
     return sorted_list
 
-async def find_insertion_point(item, sorted_list, compare):
+async def find_insertion_point(item, sorted_list, compare, top_k):
     # binary search variant that accounts for potential comparison errors
     low, high = 0, len(sorted_list) - 1
     while low <= high:
+        if low > top_k and top_k > 0:
+            return low
         mid = (low + high) // 2
         result = await compare(item, sorted_list[mid])
         # adjust binary search based on comparison, considering potential inaccuracies
@@ -116,10 +118,10 @@ async def find_insertion_point(item, sorted_list, compare):
             low = mid + 1
     return low
 
-async def sort_with_correction(buffer, compare):
+async def sort_with_correction(buffer, compare, top_k=-1):
     sorted_list = []
     for item in buffer:
-        sorted_list = await correct_insert_element(item, sorted_list, compare)
+        sorted_list = await correct_insert_element(item, sorted_list, compare, top_k)
     # correction mechanism here
     sorted_list = await correction_pass(sorted_list)
     return sorted_list
