@@ -1,7 +1,8 @@
-import merge
 import logging
+import merge
 import os
 import random
+import torch
 import uuid
 import yaml
 from safetensors.torch import save_file
@@ -16,6 +17,9 @@ class Candidate:
         self.lambda_val = lambda_val
         self.fitness = None
         self.generation = generation
+        if initial_population:
+            rand_point = torch.randn(4)
+            self.location = rand_point / torch.norm(rand_point)
 
     def to_dict(self):
         return {
@@ -31,8 +35,31 @@ def random_p():
 def random_lambda():
     return random.random()*2.5+0.5
 
+def calculate_diversity_scores(candidates):
+    locations = torch.stack([candidate.location for candidate in candidates])
+    centroid = torch.mean(locations, dim=0)
+    distances = torch.norm(locations - centroid, dim=1)
+    return distances
+
+def adjust_selection_probabilities(distances):
+    # Normalize distances to get a base probability, ensuring not overwhelming influence
+    min_dist, max_dist = distances.min(), distances.max()
+    if min_dist - max_dist < 0.001:
+        return [1.0/len(distances) for d in distances]
+    # Simple linear transformation to ensure max 30% selection chance increase
+    adjusted_probs = (distances - min_dist) / (max_dist - min_dist) * 0.3 + 0.7
+    adjusted_probs /= adjusted_probs.sum()  # Normalize to ensure it sums to 1
+    return adjusted_probs
+
 def selection(population, num_parents):
-    return random.sample(population, num_parents)
+    logging.info("Selecting candidates.")
+    distances = calculate_diversity_scores(population)
+    adjusted_probs = adjust_selection_probabilities(distances)
+
+    # Convert to list for random.choices compatibility
+    selected_indices = random.choices(range(len(population)), weights=adjusted_probs, k=num_parents)
+
+    return [population[i] for i in selected_indices]
 
 def mutation(offspring, threshold=0.05):
     if random.random() <= threshold:
@@ -50,6 +77,7 @@ def breed(parents, mutation_rate, output_path):
         tensor_map = merge.merge_safetensors(offspring.file_path, parent.file_path, offspring.p, offspring.lambda_val)
 
     offspring.generation = max([parent.generation for parent in parents]) + 1
+    offspring.location = torch.mean(torch.stack([parent.location for parent in parents]))
 
     logging.info(f"Saving to {offspring.file_path}, from {','.join([p.file_path for p in parents])} p={offspring.p} λ={offspring.lambda_val} gen={offspring.generation}")
     save_file(tensor_map, offspring.file_path)
