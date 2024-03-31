@@ -167,7 +167,7 @@ def vlm_judge_with_retry(*args, max_retries=3, initial_wait=1, max_wait=10):
                 raise
 
 def compare(cache, criteria, device, evals, metrics):
-    async def do_compare(a: evolve.Candidate, b:evolve.Candidate):
+    async def vlm_compare(a: evolve.Candidate, b:evolve.Candidate):
         reverse = random.random() > 0.5
         b64_images_a = generate_b64_images(a.file_path, evals, device, cache)
         b64_images_b = generate_b64_images(b.file_path, evals, device, cache)
@@ -176,7 +176,7 @@ def compare(cache, criteria, device, evals, metrics):
             judgement = vlm_judge_with_retry(criteria, prompts, b64_images_b, b64_images_a)
             judgement = (1 if judgement == 2 else 2)
         else:
-            judgement = vlm_judge_with_retry(prompts, b64_images_a, b64_images_b)
+            judgement = vlm_judge_with_retry(criteria, prompts, b64_images_a, b64_images_b)
         metrics.total += 1
 
         if judgement == 1:
@@ -188,7 +188,7 @@ def compare(cache, criteria, device, evals, metrics):
         if judgement == 1:
             return 1
         return -1
-    return compare
+    return vlm_compare
 
 @dataclass
 class Metrics:
