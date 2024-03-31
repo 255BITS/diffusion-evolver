@@ -9,12 +9,14 @@ import os
 import random
 import torch
 
-from diffusers import StableDiffusionXLPipeline
+from dataclasses import dataclass
 from diffusers import EulerDiscreteScheduler
+from diffusers import StableDiffusionXLPipeline
 from huggingface_hub import hf_hub_download
-from pathlib import Path
 from io import BytesIO
+from pathlib import Path
 from tqdm.asyncio import tqdm
+
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -28,23 +30,19 @@ def parse_arguments():
     parser.add_argument('-population', dest='population', type=int, default=50, help='Size of population')
     parser.add_argument('-mutation', dest='mutation', type=float, default=0.05, help='Chance of mutation')
     parser.add_argument('-output_path', dest='output_path', type=str, default="evolve_output", help='Directory to save results')
-    parser.add_argument('-prompt', dest='prompt', type=str, default='Which candidate generated more engaging images?', help='A prompt to inject into the decision making for claude. A question about which candidate did better.')
+    parser.add_argument('-criteria', dest='criteria', type=str, default='Which candidate generated more engaging images?', help='Criteria for decision making in the VLM.')
     parser.add_argument('-eval_file', dest='eval_file', type=str, default='evals.txt', help='A txt file containing a newline delimited list of prompts to evaluation against')
     parser.add_argument('-eval_samples', dest='eval_samples', type=int, default=3, help='The number of samples to evaluate between candidates')
     parser.add_argument('-device', dest='device', type=str, default="cuda:0", help='The device to run on')
     parser.add_argument('-reintroduction_threshold', dest='reintroduction_threshold', type=float, default=0.125, help='The chance to reintroduce an initial model back into the elite population. Can help with solution diversity.')
     return parser.parse_args()
 
-global_cache = {}
-global_device = None
-global_prompt = None
-def generate_images(file_path, evals):
-    global global_cache
-    if file_path in global_cache:
-        return global_cache[file_path]
+def generate_images(file_path, evals, device, cache):
+    if file_path in cache:
+        return cache[file_path]
     images = []
     logging.info(f"Loading {file_path}")
-    pipe = StableDiffusionXLPipeline.from_single_file(file_path, torch_dtype=torch.float16, variant="fp16", use_safetensors=True).to(global_device)
+    pipe = StableDiffusionXLPipeline.from_single_file(file_path, torch_dtype=torch.float16, variant="fp16", use_safetensors=True).to(device)
     pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config, timestep_spacing="trailing")
 
     for i, evl in enumerate(evals):
@@ -54,7 +52,7 @@ def generate_images(file_path, evals):
         images.append(image)
 
     del pipe
-    global_cache[file_path] = images
+    cache[file_path] = images
     return images
 
 def generate_b64_images(*args):
@@ -84,18 +82,7 @@ def load_random_evals(file_path, count):
 
     return evals
 
-global_evals = []
-
-def get_evals():
-    return global_evals
-
-def set_evals(evals):
-    global global_evals
-    global global_cache
-    global_evals = evals
-    global_cache = {}
-
-def vlm_judge(prompts, b64_images_a, b64_images_b):
+def vlm_judge(criteria, prompts, b64_images_a, b64_images_b):
     client = anthropic.Anthropic()
     media_type = "image/png"
     prompts_list = "\n".join(["{0}. {1}".format(i, prompt) for i, prompt in enumerate(prompts)])
@@ -108,7 +95,7 @@ Each candidate will be given these prompts to generate images. First you will re
 Candidate 1 generations:
 """.strip()
     end_text = """
-{global_prompt}
+{criteria}
 If candidate 1 did better, simply output '1'. If candidate 2 did better, output '2'. If any of the candidates images are broken then disqualify it. This is automated, the first 1 or 2 you output will be the winner.
 """.strip()
     messages = [
@@ -179,49 +166,53 @@ def vlm_judge_with_retry(*args, max_retries=3, initial_wait=1, max_wait=10):
                 logging.exception("All attempts failed. Raising exception.")
                 raise
 
-global_comparisons = 0
-global_yays = 0
-global_nays = 0
+def compare(cache, criteria, device, evals, metrics):
+    async def do_compare(a: evolve.Candidate, b:evolve.Candidate):
+        reverse = random.random() > 0.5
+        b64_images_a = generate_b64_images(a.file_path, evals, device, cache)
+        b64_images_b = generate_b64_images(b.file_path, evals, device, cache)
+        prompts = [evl["prompt"] for evl in evals]
+        if reverse:
+            judgement = vlm_judge_with_retry(criteria, prompts, b64_images_b, b64_images_a)
+            judgement = (1 if judgement == 2 else 2)
+        else:
+            judgement = vlm_judge_with_retry(prompts, b64_images_a, b64_images_b)
+        metrics.total += 1
 
-async def compare(a: evolve.Candidate, b:evolve.Candidate):
-    global global_comparisons, global_yays, global_nays
-    reverse = random.random() > 0.5
-    b64_images_a = generate_b64_images(a.file_path, get_evals())
-    b64_images_b = generate_b64_images(b.file_path, get_evals())
-    prompts = [evl["prompt"] for evl in get_evals()]
-    if reverse:
-        judgement = vlm_judge_with_retry(prompts, b64_images_b, b64_images_a)
-        judgement = (1 if judgement == 2 else 2)
-    else:
-        judgement = vlm_judge_with_retry(prompts, b64_images_a, b64_images_b)
-    global_comparisons += 1
+        if judgement == 1:
+            metrics.yays += 1
+        else:
+            metrics.nays += 1
+        logging.info(f"Number of comparisons Total: {metrics.total} Yay: {metrics.yays} Nay: {metrics.nays}")
 
-    if judgement == 1:
-        global_yays += 1
-    else:
-        global_nays += 1
-    logging.info(f"Number of comparisons Total: {global_comparisons} Yay: {global_yays} Nay: {global_nays}")
+        if judgement == 1:
+            return 1
+        return -1
+    return compare
 
-    if judgement == 1:
-        return 1
-    return -1
+@dataclass
+class Metrics:
+    total: int = 0
+    yays: int = 0
+    nays: int = 0
 
 async def main():
-    global global_device, global_prompt
     # Parse command-line arguments
     args = parse_arguments()
     if args.seed is not None:
         torch.manual_seed(args.seed)
-    global_device = args.device
-    global_prompt = args.prompt
     os.makedirs(args.output_path, exist_ok=True)
+    metrics = Metrics()
     initial_population = evolve.load_candidates(args.model_list)
     population = list(initial_population)
     evolve.write_yaml(population, Path(args.output_path) / "initial.yaml")
     logging.info("Beginning evolution")
+
     async for i in tqdm(range(args.cycles), desc='Evolving'):
-        set_evals(load_random_evals(args.eval_file, args.eval_samples))
-        population = await evolve.run_evolution(population, args.elite, args.parents, args.population, args.mutation, args.output_path, compare)
+        evals = load_random_evals(args.eval_file, args.eval_samples)
+        cache = {}
+        comparator = compare(cache, args.criteria, args.device, evals, metrics)
+        population = await evolve.run_evolution(population, args.elite, args.parents, args.population, args.mutation, args.output_path, comparator)
         evolve.write_yaml(population, Path(args.output_path) / f"step-{i}.yaml")
         if random.random() < args.reintroduction_threshold:
             population.append(random.choice(initial_population))
