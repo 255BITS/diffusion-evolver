@@ -38,7 +38,8 @@ def run_llava(model_path, conv_mode, query, images, sep=",", temperature=0.2, to
         conv_mode=conv_mode,
         query=query,
         images=images,
-        sep=sep
+        sep=sep,
+        device=device
     )
 
     return eval_model(args)
