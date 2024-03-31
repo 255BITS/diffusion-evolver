@@ -120,7 +120,7 @@ def eval_model(args):
     input_ids = (
         tokenizer_image_token(prompt, tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt")
         .unsqueeze(0)
-        .cuda()
+        .to(args.device)
     )
 
     stop_str = conv.sep if conv.sep_style != SeparatorStyle.TWO else conv.sep2
