@@ -181,7 +181,7 @@ def combine_pil(a, b):
 def llava_vlm_decide(prompt, img, device):
     import llava_util
     model = "liuhaotian/llava-v1.6-mistral-7b"
-    text = llava_util.run_llava(model, None, prompt, [img], device=device)
+    text = llava_util.run_llava(model, None, prompt, [img], device=device, max_new_tokens=128)
     for i, ch in enumerate(text):
         if ch == "1" or ch == "2":
             return int(ch)
@@ -193,6 +193,17 @@ def llava_vlm_judge(criteria, prompts, b64_images_a, b64_images_b, device):
         img_combine = combine_pil(img_a, img_b)
         prompt = f"You are a judge in an image generation contest. {criteria} '1' for the image on the left, '2' for the image on the right. Answer only '1'(left) or '2'(right). This is automated and the first number in your answer will be chosen."
         return llava_vlm_decide(prompt, img_combine, device)
+
+def llava_vlm_judge_with_retry(*args, max_retries=3):
+    for i in range(max_retries):
+        try:
+            return llava_vlm_judge(*args)
+        except Exception as e:
+            if i < max_retries:
+                logging.exception("Llava did not give output. Retrying...")
+            else:
+                logging.exception("Llava failed!")
+                raise
 
 def compare(cache, criteria, device, evals, metrics, vlm):
     async def vlm_compare(a: evolve.Candidate, b:evolve.Candidate):
@@ -208,7 +219,7 @@ def compare(cache, criteria, device, evals, metrics, vlm):
         elif vlm == 'llava':
             images_a = generate_images(a.file_path, evals, device, cache)
             images_b = generate_images(b.file_path, evals, device, cache)
-            judgement = llava_vlm_judge(criteria, prompts, images_a, images_b, device)
+            judgement = llava_vlm_judge_with_retry(criteria, prompts, images_a, images_b, device)
         else:
             raise "vlm not supported:" + vlm
 

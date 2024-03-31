@@ -4,6 +4,8 @@
 import argparse
 import torch
 
+from transformers import TextStreamer
+
 from llava.constants import (
     IMAGE_TOKEN_INDEX,
     DEFAULT_IMAGE_TOKEN,
@@ -69,7 +71,7 @@ def eval_model(args):
     model_name = get_model_name_from_path(args.model_path)
     if llavamodel is None:
         llavamodel = load_pretrained_model(
-            args.model_path, args.model_base, model_name
+            args.model_path, args.model_base, model_name, device=args.device
         )
     tokenizer, model, image_processor, context_len = llavamodel 
 
@@ -126,6 +128,7 @@ def eval_model(args):
     stop_str = conv.sep if conv.sep_style != SeparatorStyle.TWO else conv.sep2
     keywords = [stop_str]
     stopping_criteria = KeywordsStoppingCriteria(keywords, tokenizer, input_ids)
+    streamer = TextStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True)
 
     with torch.inference_mode():
         output_ids = model.generate(
@@ -133,11 +136,12 @@ def eval_model(args):
             images=images_tensor,
             do_sample=True if args.temperature > 0 else False,
             temperature=args.temperature,
-            top_p=args.top_p,
-            num_beams=args.num_beams,
+            #top_p=args.top_p,
+            #num_beams=args.num_beams,
             max_new_tokens=args.max_new_tokens,
             use_cache=True,
-            stopping_criteria=[stopping_criteria],
+            #stopping_criteria=[stopping_criteria],
+            streamer=streamer,
             image_sizes=[image.size for image in args.images]
         )
 
