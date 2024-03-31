@@ -1,5 +1,6 @@
 import logging
 import merge
+import numpy as np
 import os
 import random
 import torch
@@ -55,9 +56,7 @@ def selection(population, num_parents):
     logging.info("Selecting candidates.")
     distances = calculate_diversity_scores(population)
     adjusted_probs = adjust_selection_probabilities(distances)
-
-    # Convert to list for random.choices compatibility
-    selected_indices = random.choices(range(len(population)), weights=adjusted_probs, k=num_parents)
+    selected_indices = np.random.choice(range(len(population)), size=num_parents, replace=False, p=adjusted_probs)
 
     return [population[i] for i in selected_indices]
 
