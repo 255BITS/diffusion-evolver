@@ -39,6 +39,11 @@ Available options:
 - `-output_path`: Directory to save the results (default: "evolve_output").
 - `-eval_file`: Text file containing prompts for evaluation (default: "evals.txt").
 - `-eval_samples`: Number of samples to evaluate between candidates (default: 3).
+- `-vlm`: The VLM to use, claude(default) or llava
+- `-append_prompt`: Adds to the end of eval prompts
+- `-negative_prompt`: Negative prompt in diffusion sampling
+- `-guidance_scale`: Guidance scale for diffusion sampling
+- `-diffusion_steps`: Number of iterations to diffuse with the candidate during eval
 
 ## Documentation
 
@@ -46,7 +51,7 @@ The framework consists of the following main components:
 
 - `evolve.py`: Defines the core evolutionary algorithm, including candidate representation, selection, crossover, mutation, and population management.
 - `merge.py`: Provides functions for merging SafeTensor files to create new model candidates using DARE.
-- `sdxl-evolve.py`: The main script that orchestrates the evolutionary process, including image generation, evaluation, and comparison using the Anthropic API.
+- `sdxl-evolve.py`: The main script that orchestrates the evolutionary process, including image generation, evaluation, and comparison using the VLM.
 
 ### Details
 
@@ -59,7 +64,7 @@ The framework consists of the following main components:
 - `load_candidates`: Loads initial model candidates from a YAML file.
 - `write_yaml`: Writes the population to a YAML file.
 - `generate_images`: Generates images using a Stable Diffusion XL pipeline for evaluation.
-- `vlm_judge`: Uses the Anthropic API to compare and judge the quality of generated images.
+- `vlm_judge`: Uses the VLM to compare and judge the quality of generated images.
 
 ## References
 
