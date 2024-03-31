@@ -69,7 +69,7 @@ def eval_model(args):
     if llavamodel is None:
         llavamodel = load_pretrained_model(
             args.model_path, args.model_base, model_name
-        ).to(args.device)
+        )
     tokenizer, model, image_processor, context_len = llavamodel 
 
     qs = args.query
@@ -114,7 +114,7 @@ def eval_model(args):
         args.images,
         image_processor,
         model.config
-    ).to(model.device, dtype=torch.float16)
+    ).to(args.device, dtype=torch.float16)
 
     input_ids = (
         tokenizer_image_token(prompt, tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt")
