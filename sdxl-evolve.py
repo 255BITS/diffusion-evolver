@@ -36,9 +36,13 @@ def parse_arguments():
     parser.add_argument('-device', dest='device', type=str, default="cuda:0", help='The device to run on')
     parser.add_argument('-reintroduction_threshold', dest='reintroduction_threshold', type=float, default=0.125, help='The chance to reintroduce an initial model back into the elite population. Can help with solution diversity.')
     parser.add_argument('-vlm', dest='vlm', type=str, default="claude", help='The vlm to use. claude or llava')
+    parser.add_argument('-append_prompt', dest='append_prompt', type=str, default="", help='Appends to the prompt')
+    parser.add_argument('-negative_prompt', dest='negative_prompt', type=str, default="", help='Set the negative prompt')
+    parser.add_argument('-guidance_scale', dest='guidance_scale', type=float, default=1, help='The guidance scale to use')
+    parser.add_argument('-diffusion_steps', dest='diffusion_steps', type=int, default=8, help='The number of diffusion steps to run')
     return parser.parse_args()
 
-def generate_images(file_path, evals, device, cache):
+def generate_images(file_path, evals, device, cache, settings):
     if file_path in cache:
         return cache[file_path]
     images = []
@@ -47,7 +51,7 @@ def generate_images(file_path, evals, device, cache):
     pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config, timestep_spacing="trailing")
 
     for i, evl in enumerate(evals):
-        image = pipe(evl['prompt'], num_inference_steps=8, guidance_scale=1, generator=torch.manual_seed(evl['seed'])).images[0]
+        image = pipe(evl['prompt']+settings.append_prompt, negative_prompt=settings.negative_prompt, num_inference_steps=settings.diffusion_steps, guidance_scale=settings.guidance_scale, generator=torch.manual_seed(evl['seed'])).images[0]
         image = image.resize((512, 512))
         image.save(f"output-evolve-{file_path.split('/')[-1]}-{i}.png")
         images.append(image)
@@ -205,7 +209,7 @@ def llava_vlm_judge_with_retry(*args, max_retries=3):
                 logging.exception("Llava failed!")
                 raise
 
-def compare(cache, criteria, device, evals, metrics, vlm):
+def compare(cache, criteria, device, evals, metrics, vlm, settings):
     async def vlm_compare(a: evolve.Candidate, b:evolve.Candidate):
         reverse = random.random() > 0.5
         prompts = [evl["prompt"] for evl in evals]
@@ -213,12 +217,12 @@ def compare(cache, criteria, device, evals, metrics, vlm):
             a, b = b, a
 
         if vlm == 'claude':
-            b64_images_a = generate_b64_images(a.file_path, evals, device, cache)
-            b64_images_b = generate_b64_images(b.file_path, evals, device, cache)
+            b64_images_a = generate_b64_images(a.file_path, evals, device, cache, settings)
+            b64_images_b = generate_b64_images(b.file_path, evals, device, cache, settings)
             judgement = claude_vlm_judge_with_retry(criteria, prompts, b64_images_a, b64_images_b)
         elif vlm == 'llava':
-            images_a = generate_images(a.file_path, evals, device, cache)
-            images_b = generate_images(b.file_path, evals, device, cache)
+            images_a = generate_images(a.file_path, evals, device, cache, settings)
+            images_b = generate_images(b.file_path, evals, device, cache, settings)
             judgement = llava_vlm_judge_with_retry(criteria, prompts, images_a, images_b, device)
         else:
             raise "vlm not supported:" + vlm
@@ -244,6 +248,13 @@ class Metrics:
     yays: int = 0
     nays: int = 0
 
+@dataclass
+class DiffusionSettings:
+    guidance_scale: int
+    negative_prompt: str
+    append_prompt: str
+    diffusion_steps: int
+
 async def main():
     # Parse command-line arguments
     args = parse_arguments()
@@ -251,6 +262,7 @@ async def main():
         torch.manual_seed(args.seed)
     os.makedirs(args.output_path, exist_ok=True)
     metrics = Metrics()
+    settings = DiffusionSettings(guidance_scale = args.guidance_scale, diffusion_steps = args.diffusion_steps, append_prompt = args.append_prompt, negative_prompt = args.negative_prompt)
     initial_population = evolve.load_candidates(args.model_list)
     population = list(initial_population)
     evolve.write_yaml(population, Path(args.output_path) / "initial.yaml")
@@ -259,7 +271,7 @@ async def main():
     async for i in tqdm(range(args.cycles), desc='Evolving'):
         evals = load_random_evals(args.eval_file, args.eval_samples)
         cache = {}
-        comparator = compare(cache, args.criteria, args.device, evals, metrics, args.vlm)
+        comparator = compare(cache, args.criteria, args.device, evals, metrics, args.vlm, settings)
         population = await evolve.run_evolution(population, args.elite, args.parents, args.population, args.mutation, args.output_path, comparator)
         evolve.write_yaml(population, Path(args.output_path) / f"step-{i}.yaml")
         if random.random() < args.reintroduction_threshold:
