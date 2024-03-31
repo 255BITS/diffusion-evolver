@@ -9,6 +9,7 @@ import os
 import random
 import torch
 
+from PIL import Image
 from dataclasses import dataclass
 from diffusers import EulerDiscreteScheduler
 from diffusers import StableDiffusionXLPipeline
@@ -16,7 +17,6 @@ from huggingface_hub import hf_hub_download
 from io import BytesIO
 from pathlib import Path
 from tqdm.asyncio import tqdm
-
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -35,6 +35,7 @@ def parse_arguments():
     parser.add_argument('-eval_samples', dest='eval_samples', type=int, default=3, help='The number of samples to evaluate between candidates')
     parser.add_argument('-device', dest='device', type=str, default="cuda:0", help='The device to run on')
     parser.add_argument('-reintroduction_threshold', dest='reintroduction_threshold', type=float, default=0.125, help='The chance to reintroduce an initial model back into the elite population. Can help with solution diversity.')
+    parser.add_argument('-vlm', dest='vlm', type=str, default="claude", help='The vlm to use. claude or llava')
     return parser.parse_args()
 
 def generate_images(file_path, evals, device, cache):
@@ -82,7 +83,7 @@ def load_random_evals(file_path, count):
 
     return evals
 
-def vlm_judge(criteria, prompts, b64_images_a, b64_images_b):
+def claude_vlm_judge(criteria, prompts, b64_images_a, b64_images_b):
     client = anthropic.Anthropic()
     media_type = "image/png"
     prompts_list = "\n".join(["{0}. {1}".format(i, prompt) for i, prompt in enumerate(prompts)])
@@ -150,10 +151,10 @@ If candidate 1 did better, simply output '1'. If candidate 2 did better, output 
     logging.info("wtf  bad output", text)
     raise "error"
 
-def vlm_judge_with_retry(*args, max_retries=3, initial_wait=1, max_wait=10):
+def claude_vlm_judge_with_retry(*args, max_retries=3, initial_wait=1, max_wait=10):
     for attempt in range(max_retries):
         try:
-            return vlm_judge(*args)
+            return claude_vlm_judge(*args)
         except Exception as e:
             wait_time = min(max_wait, initial_wait * 2 ** attempt)
             wait_time += random.uniform(0, wait_time * 0.2)  # Adding random jitter
@@ -166,17 +167,53 @@ def vlm_judge_with_retry(*args, max_retries=3, initial_wait=1, max_wait=10):
                 logging.exception("All attempts failed. Raising exception.")
                 raise
 
-def compare(cache, criteria, device, evals, metrics):
+def combine_pil(a, b):
+    total_width = a.width + b.width
+    max_height = max(a.height, b.height)
+
+    combined_image = Image.new('RGB', (total_width, max_height))
+
+    combined_image.paste(a, (0, 0))
+    combined_image.paste(b, (a.width, 0))
+
+    return combined_image
+
+def llava_vlm_decide(prompt, img, device):
+    import llava_util
+    model = "liuhaotian/llava-v1.6-mistral-7b"
+    text = llava_util.run_llava(model, None, prompt, [img], device=device)
+    for i, ch in enumerate(text):
+        if ch == "1" or ch == "2":
+            return int(ch)
+    logging.info("wtf  bad output", text)
+    raise "error"
+
+def llava_vlm_judge(criteria, prompts, b64_images_a, b64_images_b, device):
+    for (prompt, img_a, img_b) in zip(prompts, b64_images_a, b64_images_b):
+        img_combine = combine_pil(img_a, img_b)
+        prompt = f"You are a judge in an image generation contest. {criteria} '1' for the image on the left, '2' for the image on the right. Answer only '1'(left) or '2'(right). This is automated and the first number in your answer will be chosen."
+        return llava_vlm_decide(prompt, img_combine, device)
+
+def compare(cache, criteria, device, evals, metrics, vlm):
     async def vlm_compare(a: evolve.Candidate, b:evolve.Candidate):
         reverse = random.random() > 0.5
-        b64_images_a = generate_b64_images(a.file_path, evals, device, cache)
-        b64_images_b = generate_b64_images(b.file_path, evals, device, cache)
         prompts = [evl["prompt"] for evl in evals]
         if reverse:
-            judgement = vlm_judge_with_retry(criteria, prompts, b64_images_b, b64_images_a)
-            judgement = (1 if judgement == 2 else 2)
+            a, b = b, a
+
+        if vlm == 'claude':
+            b64_images_a = generate_b64_images(a.file_path, evals, device, cache)
+            b64_images_b = generate_b64_images(b.file_path, evals, device, cache)
+            judgement = claude_vlm_judge_with_retry(criteria, prompts, b64_images_a, b64_images_b)
+        elif vlm == 'llava':
+            images_a = generate_images(a.file_path, evals, device, cache)
+            images_b = generate_images(b.file_path, evals, device, cache)
+            judgement = llava_vlm_judge(criteria, prompts, images_a, images_b, device)
         else:
-            judgement = vlm_judge_with_retry(criteria, prompts, b64_images_a, b64_images_b)
+            raise "vlm not supported:" + vlm
+
+        if reverse:
+            judgement = (1 if judgement == 2 else 2)
         metrics.total += 1
 
         if judgement == 1:
@@ -211,7 +248,7 @@ async def main():
     async for i in tqdm(range(args.cycles), desc='Evolving'):
         evals = load_random_evals(args.eval_file, args.eval_samples)
         cache = {}
-        comparator = compare(cache, args.criteria, args.device, evals, metrics)
+        comparator = compare(cache, args.criteria, args.device, evals, metrics, args.vlm)
         population = await evolve.run_evolution(population, args.elite, args.parents, args.population, args.mutation, args.output_path, comparator)
         evolve.write_yaml(population, Path(args.output_path) / f"step-{i}.yaml")
         if random.random() < args.reintroduction_threshold:
