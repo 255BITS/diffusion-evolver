@@ -30,7 +30,7 @@ def parse_arguments():
     parser.add_argument('-population', dest='population', type=int, default=50, help='Size of population')
     parser.add_argument('-mutation', dest='mutation', type=float, default=0.05, help='Chance of mutation')
     parser.add_argument('-output_path', dest='output_path', type=str, default="evolve_output", help='Directory to save results')
-    parser.add_argument('-criteria', dest='criteria', type=str, default='Which candidate generated more engaging images?', help='Criteria for decision making in the VLM.')
+    parser.add_argument('-criteria', dest='criteria', type=str, default='Which candidate generated more colorful images?', help='Criteria for decision making in the VLM.')
     parser.add_argument('-eval_file', dest='eval_file', type=str, default='evals.txt', help='A txt file containing a newline delimited list of prompts to evaluation against')
     parser.add_argument('-eval_samples', dest='eval_samples', type=int, default=3, help='The number of samples to evaluate between candidates')
     parser.add_argument('-device', dest='device', type=str, default="cuda:0", help='The device to run on')
@@ -91,17 +91,23 @@ def claude_vlm_judge(criteria, prompts, b64_images_a, b64_images_b):
     client = anthropic.Anthropic()
     media_type = "image/png"
     prompts_list = "\n".join(["{0}. {1}".format(i, prompt) for i, prompt in enumerate(prompts)])
-    begin_text = f"""
-Here are the prompts for the generations:
-{prompts_list}
-
-Each candidate will be given these prompts to generate images. First you will receive candidate 1 generations based on these prompts, then candidate 2.
+#    begin_text = f"""
+#Here are the prompts for the generations:
+#```
+#{prompts_list}
+#```
+#
+#Each candidate will be given these prompts to generate images. First you will receive candidate 1 generations based on these prompts, then candidate 2.
+#
+    begin_text = f"You will first see both candidates images then judge which did better based on the following criteria:
+```
+Criteria: {criteria}
+```
 
 Candidate 1 generations:
 """.strip()
     end_text = """
-{criteria}
-If candidate 1 did better, simply output '1'. If candidate 2 did better, output '2'. If any of the candidates images are broken then disqualify it. This is automated, the first 1 or 2 you output will be the winner.
+Which candidate won based on the criteria? If candidate 1, output '1'. If candidate 2, output '2'. This is automated, the first 1 or 2 you output will be the winner.
 """.strip()
     messages = [
             {
@@ -145,7 +151,7 @@ If candidate 1 did better, simply output '1'. If candidate 2 did better, output 
     message = client.messages.create(
         model=model,
         max_tokens=128,
-        system="You are diffusion evolver AI, a judge for text-to-image diffusion models. You will be presented images from both models with the same prompt and seed. At the end you will give your judgement. You love high quality generations, prompt adherence, and creativity.",
+        system="You are diffusion evolver AI, a judge for an image generation contest. You will be presented images from two models with the same prompt and seed. At the end you will give your judgement based on a specified criteria.",
         messages=messages,
     )
     text = message.content[0].text
