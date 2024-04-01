@@ -99,7 +99,7 @@ def claude_vlm_judge(criteria, prompts, b64_images_a, b64_images_b):
 #
 #Each candidate will be given these prompts to generate images. First you will receive candidate 1 generations based on these prompts, then candidate 2.
 #
-    begin_text = f"You will first see both candidates images then judge which did better based on the following criteria:
+    begin_text = f"""You will first see both candidates images then judge which did better based on the following criteria:
 ```
 Criteria: {criteria}
 ```
