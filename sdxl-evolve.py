@@ -40,6 +40,7 @@ def parse_arguments():
     parser.add_argument('-negative_prompt', dest='negative_prompt', type=str, default="", help='Set the negative prompt')
     parser.add_argument('-guidance_scale', dest='guidance_scale', type=float, default=1, help='The guidance scale to use')
     parser.add_argument('-diffusion_steps', dest='diffusion_steps', type=int, default=8, help='The number of diffusion steps to run')
+    parser.add_argument('-diffusion_prompt_change', dest='diffusion_prompt_change', type=str, choices=["every_cycle", "never"], default="cycle", help='The type of generation cache to use. Controls when vlm image prompts are changed. Choices: never, every_cycle')
     return parser.parse_args()
 
 def generate_images(file_path, evals, device, cache, settings):
@@ -268,6 +269,8 @@ async def main():
         torch.manual_seed(args.seed)
     os.makedirs(args.output_path, exist_ok=True)
     metrics = Metrics()
+    cache = {}
+    evals = load_random_evals(args.eval_file, args.eval_samples)
     settings = DiffusionSettings(guidance_scale = args.guidance_scale, diffusion_steps = args.diffusion_steps, append_prompt = args.append_prompt, negative_prompt = args.negative_prompt)
     initial_population = evolve.load_candidates(args.model_list)
     population = list(initial_population)
@@ -275,8 +278,9 @@ async def main():
     logging.info("Beginning evolution")
 
     async for i in tqdm(range(args.cycles), desc='Evolving'):
-        evals = load_random_evals(args.eval_file, args.eval_samples)
-        cache = {}
+        if args.diffusion_prompt_change == "every_cycle":
+            evals = load_random_evals(args.eval_file, args.eval_samples)
+            cache = {}
         comparator = compare(cache, args.criteria, args.device, evals, metrics, args.vlm, settings)
         population = await evolve.run_evolution(population, args.elite, args.parents, args.population, args.mutation, args.output_path, comparator)
         evolve.write_yaml(population, Path(args.output_path) / f"step-{i}.yaml")
