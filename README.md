@@ -32,6 +32,19 @@ After 10 cycles with prompt "T-Rex wearing aviator sunglasses, posing in front o
    - Obtain an API key from Anthropic.
    - Set the `ANTHROPIC_API_KEY` environment variable with your API key.
 
+## System requirements
+
+### Minimum
+
+* A system capable of running inference on Stable Diffusion XL
+* Hard disk space(7GB\*(population_size+initial_population))
+
+### Recommended
+
+* A modern GPU
+* A lot of ram(> 128 GB). More allows for larger population size
+* A ramdisk to store the evolved population
+
 ## Usage
 
 To run the evolutionary framework, use the following command:
@@ -57,19 +70,6 @@ Available options:
 - `-negative_prompt`: Negative prompt in diffusion sampling
 - `-guidance_scale`: Guidance scale for diffusion sampling
 - `-diffusion_steps`: Number of iterations to diffuse with the candidate during eval
-
-## System requirements
-
-### Minimum
-
-* A system capable of running inference on Stable Diffusion XL
-* Hard disk space(7GB\*(population_size+initial_population))
-
-### Recommended
-
-* A modern GPU
-* A lot of ram(> 128 GB). More allows for larger population size
-* A ramdisk to store the evolved population
 
 ## Documentation
 
