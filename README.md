@@ -16,7 +16,6 @@ After 10 cycles with prompt "T-Rex wearing aviator sunglasses, posing in front o
 
 \* Images are paired with the closest model output from the initial population. All images share the same seed and diffusion settings.
 
-
 ## Installation
 
 1. Clone the repository:
@@ -58,6 +57,19 @@ Available options:
 - `-negative_prompt`: Negative prompt in diffusion sampling
 - `-guidance_scale`: Guidance scale for diffusion sampling
 - `-diffusion_steps`: Number of iterations to diffuse with the candidate during eval
+
+## System requirements
+
+### Minimum
+
+* A system capable of running inference on Stable Diffusion XL
+* Hard disk space(7GB\*(population_size+initial_population))
+
+### Recommended
+
+* A modern GPU
+* A lot of ram(> 128 GB). More allows for larger population size
+* A ramdisk to store the evolved population
 
 ## Documentation
 
