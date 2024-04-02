@@ -223,6 +223,9 @@ def llava_vlm_judge_with_retry(*args, max_retries=3):
 
 def compare(cache, criteria, device, evals, metrics, vlm, settings):
     async def vlm_compare(a: evolve.Candidate, b:evolve.Candidate):
+        cache_key = 'compare:'+a.file_path+'.'+b.file_path
+        if cache_key in cache:
+            return cache[cache_key]
         reverse = random.random() > 0.5
         prompts = [evl["prompt"] for evl in evals]
         if reverse:
@@ -249,8 +252,11 @@ def compare(cache, criteria, device, evals, metrics, vlm, settings):
             metrics.nays += 1
         logging.info(f"Number of comparisons Total: {metrics.total} Yay: {metrics.yays} Nay: {metrics.nays}")
 
+
         if judgement == 1:
+            cache[cache_key] = 1
             return 1
+        cache[cache_key] = -1
         return -1
     return vlm_compare
 
