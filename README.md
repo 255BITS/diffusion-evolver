@@ -7,7 +7,7 @@ This project is an evolutionary framework for optimizing Stable Diffusion XL mod
 
 
 | Before Evolution | After Evolution |
-|--------|------------------|-----------------|
+|------------------|-----------------|
 | <img src="images/before_evolution_sample1.png" width="256" height="256"> | <img src="images/after_evolution_sample1.png" width="256" height="256"> |
 | <img src="images/before_evolution_sample2.png" width="256" height="256"> | <img src="images/after_evolution_sample2.png" width="256" height="256"> |
 | <img src="images/before_evolution_sample3.png" width="256" height="256"> | <img src="images/after_evolution_sample3.png" width="256" height="256"> |
