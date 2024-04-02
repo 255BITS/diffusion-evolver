@@ -34,7 +34,7 @@ def parse_arguments():
     parser.add_argument('-eval_file', dest='eval_file', type=str, default='evals.txt', help='A txt file containing a newline delimited list of prompts to evaluation against')
     parser.add_argument('-eval_samples', dest='eval_samples', type=int, default=2, help='The number of samples to evaluate between candidates')
     parser.add_argument('-device', dest='device', type=str, default="cuda:0", help='The device to run on')
-    parser.add_argument('-reintroduction_threshold', dest='reintroduction_threshold', type=float, default=0.125, help='The chance to reintroduce an initial model back into the elite population. Can help with solution diversity.')
+    parser.add_argument('-reintroduction_threshold', dest='reintroduction_threshold', type=float, default=0, help='The chance to reintroduce an initial model back into the elite population. Can help with solution diversity.')
     parser.add_argument('-vlm', dest='vlm', type=str, default="claude", help='The vlm to use. claude or llava')
     parser.add_argument('-append_prompt', dest='append_prompt', type=str, default="", help='Appends to the prompt')
     parser.add_argument('-negative_prompt', dest='negative_prompt', type=str, default="", help='Set the negative prompt')
