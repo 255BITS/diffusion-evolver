@@ -3,6 +3,15 @@
 
 This project is an evolutionary framework for optimizing Stable Diffusion XL models. It allows you to evolve a population of models through crossover, mutation, and selection based on their performance judged by a VLM.
 
+## Examples
+
+
+| Prompt | Before Evolution | After Evolution |
+|--------|------------------|-----------------|
+| T-Rex wearing aviator sunglasses, posing in front of a diffusion-generated Jurassic landscape, 80s vaporwave style, 4K | <img src="images/before_evolution_sample1.png" width="256" height="256"> | <img src="images/after_evolution_sample1.png" width="256" height="256"> |
+|  | <img src="images/before_evolution_sample2.png" width="256" height="256"> | <img src="images/after_evolution_sample2.png" width="256" height="256"> |
+|  | <img src="images/before_evolution_sample3.png" width="256" height="256"> | <img src="images/after_evolution_sample3.png" width="256" height="256"> |
+
 ## Installation
 
 1. Clone the repository:
