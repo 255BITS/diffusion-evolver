@@ -71,6 +71,10 @@ Available options:
 - `-negative_prompt`: Negative prompt in diffusion sampling
 - `-guidance_scale`: Guidance scale for diffusion sampling
 - `-diffusion_steps`: Number of iterations to diffuse with the candidate during eval
+- `-width`: Generation width
+- `-height`: Generation height
+- `-resize_width`: Width to resize images after generation
+- `-resize_height`: Height to resize images after generation
 
 ## Documentation
 
