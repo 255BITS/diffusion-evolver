@@ -14,6 +14,7 @@ This project is an evolutionary framework for optimizing Stable Diffusion XL mod
 After 10 cycles with prompt "T-Rex wearing aviator sunglasses, posing in front of a diffusion-generated Jurassic landscape, 80s vaporwave style, 4K"
 
 \* Images are paired with the closest model output from the initial population. All images share the same seed and diffusion settings. The VLM was not shown the prompt and default settings were used.
+
 \* Demo models are available here [https://huggingface.co/martyn/sdxl-evolved-demo-models](https://huggingface.co/martyn/sdxl-evolved-demo-models)
 
 ## Installation
