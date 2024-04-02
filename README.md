@@ -5,14 +5,16 @@ This project is an evolutionary framework for optimizing Stable Diffusion XL mod
 
 ## Examples
 
+| After Evolution | Before Evolution | Model |
+|------------------|-----------------| ----- |
+| <img src="images/after_evolution_sample1.png" width="256" height="256"> | <img src="images/before_evolution_sample1.png" width="256" height="256"> | Model A * |
+| <img src="images/after_evolution_sample2.png" width="256" height="256"> | <img src="images/before_evolution_sample2.png" width="256" height="256"> | Model B * |
+| <img src="images/after_evolution_sample3.png" width="256" height="256"> | <img src="images/before_evolution_sample3.png" width="256" height="256"> | Model C * |
 
-| After Evolution | Before Evolution |
-|------------------|-----------------|
-| <img src="images/after_evolution_sample1.png" width="256" height="256"> | <img src="images/before_evolution_sample1.png" width="256" height="256"> |
-| <img src="images/after_evolution_sample2.png" width="256" height="256"> | <img src="images/before_evolution_sample2.png" width="256" height="256"> |
-| <img src="images/after_evolution_sample3.png" width="256" height="256"> | <img src="images/before_evolution_sample3.png" width="256" height="256"> |
 
 After 10 cycles with prompt "T-Rex wearing aviator sunglasses, posing in front of a diffusion-generated Jurassic landscape, 80s vaporwave style, 4K"
+
+\* Images are paired with the closest model output from the initial population. All images share the same seed and diffusion settings.
 
 
 ## Installation
