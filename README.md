@@ -6,11 +6,11 @@ This project is an evolutionary framework for optimizing Stable Diffusion XL mod
 ## Examples
 
 
-| Before Evolution | After Evolution |
+| After Evolution | Before Evolution |
 |------------------|-----------------|
-| <img src="images/before_evolution_sample1.png" width="256" height="256"> | <img src="images/after_evolution_sample1.png" width="256" height="256"> |
-| <img src="images/before_evolution_sample2.png" width="256" height="256"> | <img src="images/after_evolution_sample2.png" width="256" height="256"> |
-| <img src="images/before_evolution_sample3.png" width="256" height="256"> | <img src="images/after_evolution_sample3.png" width="256" height="256"> |
+| <img src="images/after_evolution_sample1.png" width="256" height="256"> | <img src="images/before_evolution_sample1.png" width="256" height="256"> |
+| <img src="images/after_evolution_sample2.png" width="256" height="256"> | <img src="images/before_evolution_sample2.png" width="256" height="256"> |
+| <img src="images/after_evolution_sample3.png" width="256" height="256"> | <img src="images/before_evolution_sample3.png" width="256" height="256"> |
 
 After 10 cycles with prompt "T-Rex wearing aviator sunglasses, posing in front of a diffusion-generated Jurassic landscape, 80s vaporwave style, 4K"
 
