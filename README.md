@@ -17,6 +17,10 @@ After 10 cycles with prompt "T-Rex wearing aviator sunglasses, posing in front o
 
 \* Demo models are available here [https://huggingface.co/martyn/sdxl-evolved-demo-models](https://huggingface.co/martyn/sdxl-evolved-demo-models)
 
+## Models
+
+More models are available here [https://huggingface.co/collections/martyn/evolved-sdxl-models-660b9185df88d3dbac68c052](https://huggingface.co/collections/martyn/evolved-sdxl-models-660b9185df88d3dbac68c052)
+
 ## Installation
 
 1. Clone the repository:
