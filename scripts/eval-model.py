@@ -3,6 +3,7 @@ import base64
 import io
 import json
 import random
+import re
 import requests
 import sys
 import time
@@ -28,14 +29,33 @@ def load_random_evals(file_path, count):
 
     return evals
 
+def load_file_and_return_random_line(file_path):
+    with open(file_path, 'r') as file:
+         file_map = file.read().split('\n')
+
+    line = random.choice(file_map)
+    return line
+
+def wildcard_replace(s, directory):
+    if directory is None:
+        return s
+    wildcards = re.findall(r'__(.*?)__', s)
+    replaced = [load_file_and_return_random_line(directory+"/"+w+".txt") for w in wildcards]
+    replacements = dict(zip(wildcards, replaced))
+    for wildcard, replacement in replacements.items():
+        s = s.replace('__{}__'.format(wildcard), replacement)
+
+    return s
+
 def generate_image(prompt, negative_prompt, config_file=None, fname=None):
-    seed = random.SystemRandom().randint(0, 2**32-1)
+    seed = random.randint(0, 2**32-1)
     if config_file is None:
         with open("txt2img/sdwebui_config.json", 'r') as file:
             config_file = json.load(file)
     headers = {"Content-Type": "application/json"}
     data = dict(config_file)
 
+    prompt = wildcard_replace(prompt, "wildcards")
     data["prompt"]=prompt
     data["negative_prompt"]=negative_prompt
 
@@ -76,7 +96,7 @@ def run_eval(working_dir):
           "sampler_name": "Euler",
           "scheduler": "SGM Uniform",
           "cfg_scale": 1,
-          "steps": 14
+          "steps": 8
         }
         prompt = f"__person__, __sdprompt__, __bg__"
         img = generate_image(prompt, "nsfw", config, working_dir+"/"+str(i)+".png")
