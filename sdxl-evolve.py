@@ -39,6 +39,7 @@ def parse_arguments():
     parser.add_argument('-append_prompt', dest='append_prompt', type=str, default="", help='Appends to the prompt')
     parser.add_argument('-negative_prompt', dest='negative_prompt', type=str, default="", help='Set the negative prompt')
     parser.add_argument('-guidance_scale', dest='guidance_scale', type=float, default=1, help='The guidance scale to use')
+    parser.add_argument('-scheduler', dest='scheduler', type=str, default="sgm_uniform", help='The diffusion scheduler to use')
     parser.add_argument('-diffusion_steps', dest='diffusion_steps', type=int, default=8, help='The number of diffusion steps to run')
     parser.add_argument('-diffusion_prompt_change', dest='diffusion_prompt_change', type=str, choices=["every_cycle", "never"], default="cycle", help='The type of generation cache to use. Controls when vlm image prompts are changed. Choices: never, every_cycle')
     parser.add_argument("-width", dest='width', type=int, default=1024, help='Width of diffusion samples to generate')
@@ -53,7 +54,10 @@ def generate_images(file_path, evals, device, cache, settings):
     images = []
     logging.info(f"Loading {file_path}")
     pipe = StableDiffusionXLPipeline.from_single_file(file_path, torch_dtype=torch.float16, variant="fp16", use_safetensors=True).to(device)
-    pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config, timestep_spacing="trailing")
+    if settings.scheduler == "sgm_uniform":
+        pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config, timestep_spacing="trailing")
+    else:
+        pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
 
     for i, evl in enumerate(evals):
         image = pipe(evl['prompt']+settings.append_prompt, width=settings.width, height=settings.height, negative_prompt=settings.negative_prompt, num_inference_steps=settings.diffusion_steps, guidance_scale=settings.guidance_scale, generator=torch.manual_seed(evl['seed'])).images[0]
@@ -276,6 +280,7 @@ class DiffusionSettings:
     height: int
     resize_width: int
     resize_height: int
+    scheduler: str
 
 async def main():
     # Parse command-line arguments
@@ -295,6 +300,7 @@ async def main():
             resize_height = args.resize_height,
             resize_width = args.resize_width,
             width = args.width,
+            scheduler = args.scheduler
     )
     initial_population = evolve.load_candidates(args.model_list)
     population = list(initial_population)
