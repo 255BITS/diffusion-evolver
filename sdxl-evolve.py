@@ -11,6 +11,7 @@ import torch
 
 from PIL import Image
 from dataclasses import dataclass
+from diffusers import AutoencoderKL
 from diffusers import EulerDiscreteScheduler
 from diffusers import StableDiffusionXLPipeline
 from huggingface_hub import hf_hub_download
@@ -57,10 +58,7 @@ def generate_images(file_path, evals, device, cache, settings):
 
     pipe = StableDiffusionXLPipeline.from_single_file(file_path, torch_dtype=torch.float16, variant="fp16", use_safetensors=True).to(device)
     if settings.vae:
-        vae_path = settings.vae
-        model_weights = load_safetensors(vae_path)
-        vae = AutoencoderKL.from_config_and_state_dict(config=model_weights["config"], state_dict=model_weights["state_dict"])
-        pipe.vae = vae
+        pipe.vae = AutoencoderKL.from_pretrained(settings.vae)
     if settings.scheduler == "sgm_uniform":
         pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config, timestep_spacing="trailing")
     else:
