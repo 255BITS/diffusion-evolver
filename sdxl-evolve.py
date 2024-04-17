@@ -308,6 +308,7 @@ async def main():
             resize_height = args.resize_height,
             resize_width = args.resize_width,
             width = args.width,
+            vae = args.vae,
             scheduler = args.scheduler
     )
     initial_population = evolve.load_candidates(args.model_list)
