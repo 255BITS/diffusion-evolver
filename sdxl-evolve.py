@@ -58,7 +58,7 @@ def generate_images(file_path, evals, device, cache, settings):
 
     pipe = StableDiffusionXLPipeline.from_single_file(file_path, torch_dtype=torch.float16, variant="fp16", use_safetensors=True).to(device)
     if settings.vae:
-        pipe.vae = AutoencoderKL.from_pretrained(settings.vae)
+        pipe.vae = AutoencoderKL.from_single_file(settings.vae)
     if settings.scheduler == "sgm_uniform":
         pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config, timestep_spacing="trailing")
     else:
