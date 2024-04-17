@@ -46,6 +46,7 @@ def parse_arguments():
     parser.add_argument("-height", dest='height', type=int, default=1024, help='Height of diffusion samples to generate')
     parser.add_argument("-resize_width", dest='resize_width', type=int, default=512, help='Width to resized diffusion samples before sending to the VLM')
     parser.add_argument("-resize_height", dest='resize_height', type=int, default=512, help='Height to resize diffusion samples before sending to the VLM')
+    parser.add_argument("-vae", dest='vae', type=str, default=None, help='Custom VAE to use during sampling')
     return parser.parse_args()
 
 def generate_images(file_path, evals, device, cache, settings):
@@ -53,7 +54,13 @@ def generate_images(file_path, evals, device, cache, settings):
         return cache[file_path]
     images = []
     logging.info(f"Loading {file_path}")
+
     pipe = StableDiffusionXLPipeline.from_single_file(file_path, torch_dtype=torch.float16, variant="fp16", use_safetensors=True).to(device)
+    if settings.vae:
+        vae_path = settings.vae
+        model_weights = load_safetensors(vae_path)
+        vae = AutoencoderKL.from_config_and_state_dict(config=model_weights["config"], state_dict=model_weights["state_dict"])
+        pipe.vae = vae
     if settings.scheduler == "sgm_uniform":
         pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config, timestep_spacing="trailing")
     else:
@@ -281,6 +288,7 @@ class DiffusionSettings:
     resize_width: int
     resize_height: int
     scheduler: str
+    vae: str
 
 async def main():
     # Parse command-line arguments
