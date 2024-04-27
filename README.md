@@ -21,6 +21,8 @@ After 10 cycles with prompt "T-Rex wearing aviator sunglasses, posing in front o
 
 More models are available here [https://huggingface.co/collections/martyn/evolved-sdxl-models-660b9185df88d3dbac68c052](https://huggingface.co/collections/martyn/evolved-sdxl-models-660b9185df88d3dbac68c052)
 
+and on Civit.ai [https://civitai.com/user/chandro/models](https://civitai.com/user/chandro/models)
+
 ## Installation
 
 1. Clone the repository:
