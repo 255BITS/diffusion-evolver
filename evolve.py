@@ -64,12 +64,9 @@ def selection(population, num_parents):
     return [population[i] for i in selected_indices]
 
 def perturb_tensor_map(tensor_map):
-    tensor_map = {}
     for key, value in tensor_map.items():
         if 'diffusion_model' in key:
             tensor_map[key] = value + torch.normal(torch.zeros_like(value), value.std() * 0.01)
-        else:
-            tensor_map[key] = f1.get_tensor(key)
     return tensor_map
 
 def perturb(candidate):
