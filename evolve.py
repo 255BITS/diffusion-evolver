@@ -6,18 +6,20 @@ import random
 import torch
 import uuid
 import yaml
+import sys
 from safetensors.torch import save_file
 
 from pathlib import Path
 
 class Candidate:
-    def __init__(self, file_path, p, lambda_val, initial_population=False, generation=0):
+    def __init__(self, file_path, p, lambda_val, initial_population=False, generation=0, seed=None):
         self.file_path = file_path
         self.initial_population = initial_population
         self.p = p
         self.lambda_val = lambda_val
-        self.fitness = None
         self.generation = generation
+        if seed is None:
+            self.seed = random.randint(-sys.maxsize-1, sys.maxsize)
         if initial_population:
             rand_point = torch.randn(4)
             self.location = rand_point / torch.norm(rand_point)
@@ -27,7 +29,8 @@ class Candidate:
             "model": self.file_path,
             "p": self.p,
             "lambda": self.lambda_val,
-            "generation": self.generation
+            "generation": self.generation,
+            "seed": self.seed
         }
 
 def random_p():
@@ -60,17 +63,44 @@ def selection(population, num_parents):
 
     return [population[i] for i in selected_indices]
 
+def perturb_tensor_map(tensor_map):
+    from safetensors.torch import safe_open
+    tensor_map = {}
+    for key, value in tensor_map.items():
+        if 'diffusion_model' in key:
+            tensor_map[key] = value + torch.normal(torch.zeros_like(v), value.std() * 0.01)
+        else:
+            tensor_map[key] = f1.get_tensor(key)
+    return tensor_map
+
+def perturb(candidate):
+    from safetensors.torch import safe_open
+    tensor_map = {}
+    with safe_open(candidate.file_path, framework="pt", device="cpu") as f1:
+        for key in f1.keys():
+            if 'diffusion_model' in key:
+                v = f1.get_tensor(key)
+                tensor_map[key] = v + torch.normal(torch.zeros_like(v), v.std() * 0.01)
+            else:
+                tensor_map[key] = f1.get_tensor(key)
+    return tensor_map
+
 def mutation(offspring, threshold=0.05):
-    if random.random() <= threshold:
-        offspring.p = random_p()
-        offspring.lambda_val = random_lambda()
+    offspring.p = random_p()
+    offspring.lambda_val = random_lambda()
 
 def breed(parents, mutation_rate, output_path):
     logging.info("Crossover and mutation...")
     file_path = str(Path(output_path) / (str(uuid.uuid4())+".safetensors"))
     offspring = Candidate(file_path, parents[0].p, parents[0].lambda_val)
-    mutation(offspring, mutation_rate)
+    mutation_event = random.random() <= threshold
+    if mutation_event:
+        mutation(offspring)
     tensor_map = merge.merge_safetensors(parents[0].file_path, parents[1].file_path, offspring.p, offspring.lambda_val)
+    mutation_event = random.random() <= threshold
+    if mutation_event:
+        tensor_map = perturb_tensor_map(tensor_map)
+
 
     for parent in parents[2:]:
         tensor_map = merge.merge_safetensors(offspring.file_path, parent.file_path, offspring.p, offspring.lambda_val)
@@ -167,9 +197,9 @@ async def run_evolution(population, elite_size, num_parents, population_size, mu
     return population[:elite_size]
 
 def log_candidates(population):
-    format_str = "{{0}}. {{1:<24}} - {{2}}".format()
+    format_str = "{{0}}. {{1:<24}}".format()
     for index, candidate in enumerate(population, start=1):
-        logging.info(format_str.format(index, candidate.file_path, candidate.fitness))
+        logging.info(format_str.format(index, candidate.file_path))
 
 def load_candidates(file_path):
     candidates = []
@@ -179,7 +209,8 @@ def load_candidates(file_path):
         p = candidate_data.get('p', random_p())
         lambda_val = candidate_data.get("lambda", random_lambda())
         generation = candidate_data.get("generation", 0)
-        candidate = Candidate(candidate_data['model'], p=p, lambda_val=lambda_val, initial_population=True, generation=generation)
+        seed = candidate_data.get("seed", None)
+        candidate = Candidate(candidate_data['model'], p=p, lambda_val=lambda_val, initial_population=True, generation=generation, seed=seed)
         candidates.append(candidate)
     return candidates
 
