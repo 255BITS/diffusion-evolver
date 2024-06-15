@@ -316,8 +316,9 @@ async def main():
             scheduler = args.scheduler
     )
     initial_population = evolve.load_candidates(args.model_list)
+    initial_populiation_count = len(initial_population)
     while(len(initial_population) < args.perturb_seed_population):
-        parent = random.choice(initial_population)
+        parent = random.choice(initial_population[:initial_populiation_count])
         file_path = str(Path(args.output_path) / (str(uuid.uuid4())+".safetensors"))
         offspring = evolve.Candidate(file_path, parent.p, parent.lambda_val, initial_population=True)
         offspring.generation = parent.generation + 1
