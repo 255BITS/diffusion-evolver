@@ -10,6 +10,8 @@ import random
 import torch
 import uuid
 
+from transformers import CLIPTextModelWithProjection, CLIPTokenizer, T5EncoderModel, T5TokenizerFast
+
 from PIL import Image
 from dataclasses import dataclass
 from diffusers import StableDiffusion3Pipeline
@@ -56,7 +58,17 @@ def generate_images(file_path, evals, device, cache, settings):
     images = []
     logging.info(f"Loading {file_path}")
 
-    pipe = StableDiffusion3Pipeline.from_single_file(file_path, torch_dtype=torch.float16, variant="fp16", use_safetensors=True).to(device)
+    dtype = torch.bfloat16
+    model_id = "stabilityai/stable-diffusion-3-medium-diffusers"
+
+    pipe = StableDiffusion3Pipeline.from_single_file(file_path, text_encoder = None, text_encoder_2 = None, text_encoder_3 = None, device=device)
+    pipe.text_encoder = CLIPTextModelWithProjection.from_pretrained(model_id, subfolder="text_encoder")
+    pipe.text_encoder_2 = CLIPTextModelWithProjection.from_pretrained(model_id, subfolder="text_encoder_2")
+    #pipe.text_encoder_3 = T5EncoderModel.from_pretrained(model_id, subfolder="text_encoder_3")
+    pipe.tokenizer = CLIPTokenizer.from_pretrained(model_id, subfolder="tokenizer")
+    pipe.tokenizer_2 = CLIPTokenizer.from_pretrained(model_id, subfolder="tokenizer_2")
+    #pipe.tokenizer_3 = T5TokenizerFast.from_pretrained(model_id, subfolder="tokenizer_3")
+    pipe = pipe.to(dtype).to(device)
 
     for i, evl in enumerate(evals):
         image = pipe(evl['prompt']+settings.append_prompt, width=settings.width, height=settings.height, negative_prompt=settings.negative_prompt, num_inference_steps=settings.diffusion_steps, guidance_scale=settings.guidance_scale, generator=torch.manual_seed(evl['seed'])).images[0]
