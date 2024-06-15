@@ -85,7 +85,7 @@ def perturb(candidate):
                 tensor_map[key] = f1.get_tensor(key)
     return tensor_map
 
-def mutation(offspring, threshold=0.05):
+def mutation(offspring):
     offspring.p = random_p()
     offspring.lambda_val = random_lambda()
 
@@ -93,11 +93,11 @@ def breed(parents, mutation_rate, output_path):
     logging.info("Crossover and mutation...")
     file_path = str(Path(output_path) / (str(uuid.uuid4())+".safetensors"))
     offspring = Candidate(file_path, parents[0].p, parents[0].lambda_val)
-    mutation_event = random.random() <= threshold
+    mutation_event = random.random() <= mutation_rate
     if mutation_event:
         mutation(offspring)
     tensor_map = merge.merge_safetensors(parents[0].file_path, parents[1].file_path, offspring.p, offspring.lambda_val)
-    mutation_event = random.random() <= threshold
+    mutation_event = random.random() <= mutation_rate
     if mutation_event:
         tensor_map = perturb_tensor_map(tensor_map)
 
