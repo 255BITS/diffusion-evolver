@@ -7,7 +7,7 @@ import torch
 import uuid
 import yaml
 import sys
-from safetensors.torch import save_file
+from safetensors.torch import save_file, safe_open
 
 from pathlib import Path
 
@@ -64,17 +64,15 @@ def selection(population, num_parents):
     return [population[i] for i in selected_indices]
 
 def perturb_tensor_map(tensor_map):
-    from safetensors.torch import safe_open
     tensor_map = {}
     for key, value in tensor_map.items():
         if 'diffusion_model' in key:
-            tensor_map[key] = value + torch.normal(torch.zeros_like(v), value.std() * 0.01)
+            tensor_map[key] = value + torch.normal(torch.zeros_like(value), value.std() * 0.01)
         else:
             tensor_map[key] = f1.get_tensor(key)
     return tensor_map
 
 def perturb(candidate):
-    from safetensors.torch import safe_open
     tensor_map = {}
     with safe_open(candidate.file_path, framework="pt", device="cpu") as f1:
         for key in f1.keys():
