@@ -1,0 +1,61 @@
+name: Main merge prerelease
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [closed]
+
+permissions: {}
+
+jobs:
+  publish:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      # Use only merge metadata from GitHub. Never check out or run PR code here.
+      - name: Publish the merged source
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          if [[ ! "$MERGE_SHA" =~ ^[0-9a-f]{40}$ || ! "$PR_NUMBER" =~ ^[0-9]+$ ]]; then
+            echo "GitHub did not provide a valid merged commit and PR number." >&2
+            exit 1
+          fi
+
+          tag="main-${MERGE_SHA}"
+          ref_api="repos/$GH_REPO/git/ref/tags/$tag"
+          release_api="repos/$GH_REPO/releases/tags/$tag"
+
+          if ! tag_target=$(gh api "$ref_api" --jq '.object | [.type, .sha] | join(":")' 2>/dev/null); then
+            gh api --method POST "repos/$GH_REPO/git/refs" \
+              -f "ref=refs/tags/$tag" -f "sha=$MERGE_SHA" --silent ||
+              echo "Tag creation did not succeed. Checking whether the tag already exists." >&2
+            tag_target=$(gh api "$ref_api" --jq '.object | [.type, .sha] | join(":")')
+          fi
+          if [[ "$tag_target" != "commit:$MERGE_SHA" ]]; then
+            echo "$tag points to $tag_target instead of $MERGE_SHA." >&2
+            exit 1
+          fi
+
+          if ! gh api "$release_api" --silent 2>/dev/null; then
+            printf -v notes 'Source from [pull request #%s](%s/%s/pull/%s) at commit `%s`.\n\n[Publishing run](%s/%s/actions/runs/%s)' \
+              "$PR_NUMBER" "$GITHUB_SERVER_URL" "$GH_REPO" "$PR_NUMBER" "$MERGE_SHA" \
+              "$GITHUB_SERVER_URL" "$GH_REPO" "$GITHUB_RUN_ID"
+            gh release create "$tag" --repo "$GH_REPO" --verify-tag --prerelease --latest=false \
+              --title "Main merge #$PR_NUMBER (${MERGE_SHA:0:12})" --notes "$notes" ||
+              echo "Release creation did not succeed. Checking whether the release already exists." >&2
+          fi
+
+          release_url=$(gh api "$release_api" --jq 'select(.prerelease and (.draft | not)) | .html_url')
+          if [[ -z "$release_url" ]]; then
+            echo "$tag does not have a published prerelease." >&2
+            exit 1
+          fi
+          echo "$release_url"
